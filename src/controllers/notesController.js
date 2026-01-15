@@ -25,7 +25,7 @@ export const createNote = async (req, res) => {
 export const deleteNote = async (req, res, next) => {
   const { noteId } = req.params;
 
-  const note = await Note.findOneAndDelete(noteId);
+  const note = await Note.findOneAndDelete({ _id: noteId });
   if (!note) {
     next(createHttpError(404, 'Note not found'));
     return;
