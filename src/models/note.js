@@ -19,6 +19,10 @@ const noteSchema = new Schema(
       default: 'Todo',
       required: false,
     },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
   },
   {
     timestamps: true,
