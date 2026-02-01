@@ -21,11 +21,10 @@ const userSchema = new Schema(
   { timestamps: true, versionKey: false },
 );
 //Hook pre('save') to set the username to be the same as the email by default when creating a user.
-userSchema.pre('save', function (next) {
+userSchema.pre('save', async function (next) {
   if (!this.username) {
     this.username = this.email;
   }
-  next();
 });
 //remove the password from the user object before sending the response
 userSchema.methods.toJSON = function () {
