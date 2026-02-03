@@ -98,3 +98,14 @@ export const logoutUser = async (req, res) => {
   //Відповідь клієнту:Повертаємо статус 204 No Content.
   res.status(204).send();
 };
+//Знаходимо користувача за email.
+//Формуємо «успішну» відповідь (далі додамо фактичне надсилання листа).
+export const requestResetEmail = async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+
+  res.status(200).json({
+    message: 'Password reset email sent successfully',
+  });
+};
