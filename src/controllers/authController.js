@@ -3,13 +3,15 @@ import createHttpError from 'http-errors';
 import { User } from '../models/user.js';
 import { createSession, setSessionCookies } from '../services/auth.js';
 import { Session } from '../models/session.js';
+import jwt from 'jsonwebtoken';
+import { sendEmail } from '../utils/sendEmail.js';
 
 export const registerUser = async (req, res, next) => {
   const { email, password } = req.body;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
-    return next(createHttpError(400, 'Email in use'));
+    throw createHttpError(400, 'Email in use');
   }
 
   // Хешуємо пароль
@@ -33,13 +35,13 @@ export const loginUser = async (req, res, next) => {
 
   const user = await User.findOne({ email });
   if (!user) {
-    return next(createHttpError(401, 'Invalid credentials'));
+    throw createHttpError(401, 'Invalid credentials');
   }
 
   // Порівнюємо хеші паролів
   const isValidPassword = await bcrypt.compare(password, user.password);
   if (!isValidPassword) {
-    return next(createHttpError(401, 'Invalid credentials'));
+    throw createHttpError(401, 'Invalid credentials');
   }
 
   // Видаляємо стару сесію користувача
@@ -59,15 +61,14 @@ export const refreshUserSession = async (req, res, next) => {
   });
   // 2. Якщо такої сесії нема, повертаємо помилку
   if (!session) {
-    return next(createHttpError(401, 'Session not found'));
+    throw createHttpError(401, 'Session not found');
   }
-
   // 3. Якщо сесія існує, перевіряємо валідність рефреш токена
   const isSessionTokenExpired =
     new Date() > new Date(session.refreshTokenValidUntil);
   // Якщо термін дії рефреш токена вийшов, повертаємо помилку
   if (isSessionTokenExpired) {
-    return next(createHttpError(401, 'Session token expired'));
+    throw createHttpError(401, 'Session token expired');
   }
   // 4. Якщо всі перевірки пройшли добре, видаляємо поточну сесію
   await Session.deleteOne({
@@ -98,13 +99,45 @@ export const logoutUser = async (req, res) => {
   //Відповідь клієнту:Повертаємо статус 204 No Content.
   res.status(204).send();
 };
-//Знаходимо користувача за email.
-//Формуємо «успішну» відповідь (далі додамо фактичне надсилання листа).
+
+//sendEmail
+//Оновлюємо контролер — додаємо генерацію токена та надсилання листа:
 export const requestResetEmail = async (req, res) => {
   const { email } = req.body;
 
   const user = await User.findOne({ email });
+  // Якщо користувача нема — навмисно повертаємо ту саму "успішну"
+  // відповідь без відправлення листа (anti user enumeration).
+  if (!user) {
+    res.status(200).json({
+      message: 'Password reset email sent successfully',
+    });
+  }
 
+  // Користувач є — генеруємо короткоживучий JWT і відправляємо лист
+  const resetToken = jwt.sign(
+    { sub: user._id, email },
+    process.env.JWT_SECRET,
+    { expiresIn: '15m' },
+  );
+  console.log(resetToken);
+
+  const frontendUrl = `https://stackblitzstarters9z9rfg4g-1yc1--3000--31fc58ec.local-credentialless.webcontainer.io/reset-pwd?token=${resetToken}`;
+
+  try {
+    await sendEmail({
+      from: process.env.SMTP_FROM,
+      to: email,
+      subject: 'Reset your password',
+      html: `<p>Click <a href="${frontendUrl}">here</a> to reset your password!</p>`,
+    });
+  } catch {
+    throw createHttpError(
+      500,
+      'Failed to send the email, please try again later.',
+    );
+  }
+  // Та сама "нейтральна" відповідь
   res.status(200).json({
     message: 'Password reset email sent successfully',
   });
