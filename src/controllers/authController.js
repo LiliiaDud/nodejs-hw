@@ -112,7 +112,7 @@ export const requestResetEmail = async (req, res) => {
   // Якщо користувача нема — навмисно повертаємо ту саму "успішну"
   // відповідь без відправлення листа (anti user enumeration).
   if (!user) {
-    res.status(200).json({
+    return res.status(200).json({
       message: 'Password reset email sent successfully',
     });
   }
@@ -168,7 +168,7 @@ export const resetPassword = async (req, res) => {
     throw createHttpError(401, 'Invalid or expired token');
   }
   // 2. Шукаємо користувача
-  const user = await User.findById({ _id: payload.sub, email: payload.email });
+  const user = await User.findOne({ _id: payload.sub, email: payload.email });
   if (!user) {
     throw createHttpError(404, 'User not found');
   }
