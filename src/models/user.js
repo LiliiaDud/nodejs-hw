@@ -17,11 +17,16 @@ const userSchema = new Schema(
       required: true,
       minlength: 8,
     },
+    avatar: {
+      type: String,
+      required: false,
+      default: 'https://ac.goit.global/fullstack/react/default-avatar.jpg',
+    },
   },
   { timestamps: true, versionKey: false },
 );
 //Hook pre('save') to set the username to be the same as the email by default when creating a user.
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function () {
   if (!this.username) {
     this.username = this.email;
   }
